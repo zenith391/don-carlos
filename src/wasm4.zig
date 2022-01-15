@@ -1,6 +1,23 @@
 //
 // WASM-4: https://wasm4.org/docs
 
+pub const Gamepad = struct {
+    state: u8,
+
+    pub const Button = enum(u8) {
+        Left = BUTTON_LEFT,
+        Right = BUTTON_RIGHT,
+        Down = BUTTON_DOWN,
+        Up = BUTTON_UP,
+        X = BUTTON_1,
+        Y = BUTTON_2,
+    };
+
+    pub fn isPressed(self: Gamepad, button: Button) bool {
+        return self.state & @enumToInt(button) != 0;
+    }
+};
+
 // ┌───────────────────────────────────────────────────────────────────────────┐
 // │                                                                           │
 // │ Platform Constants                                                        │
