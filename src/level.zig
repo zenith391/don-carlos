@@ -1,11 +1,13 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-pub const Tile = enum(u2) {
+pub const Tile = enum {
     Air,
     Tile,
     // minable tile
     Brick,
+    DoorBottom,
+    DoorTop,
 
     pub fn isSolid(self: Tile) bool {
         return self == .Tile or self == .Brick;

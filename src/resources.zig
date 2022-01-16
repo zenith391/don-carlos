@@ -1,9 +1,16 @@
 const std = @import("std");
 const bmp = @import("bmp.zig");
 
+// Items
 pub const Brick = makeImageArray(@embedFile("../assets/brick.bmp"));
-pub const Tile1 = makeImageArray(@embedFile("../assets/tile1.bmp"));
-pub const TileBrick = makeImageArray(@embedFile("../assets/tile-brick.bmp"));
+
+// Tiles
+pub const Tile1 = makeImageArray(@embedFile("../assets/tiles/sand.bmp"));
+pub const TileBrick = makeImageArray(@embedFile("../assets/tiles/brick.bmp"));
+pub const DoorBottom = makeImageArray(@embedFile("../assets/tiles/door-bottom.bmp"));
+pub const DoorTop = makeImageArray(@embedFile("../assets/tiles/door-top.bmp"));
+
+// Entities
 pub const Minion = makeImageArray(@embedFile("../assets/minion.bmp"));
 pub const Player = struct {
     pub const Walking = makeImageArray(@embedFile("../assets/player-walkingr.bmp"));

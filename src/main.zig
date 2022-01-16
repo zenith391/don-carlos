@@ -34,7 +34,7 @@ pub const PlayingState = struct {
     /// You get this from mining minable tiles from the level
     /// You can either spend them in making new (expensive) tiles
     /// or by spawning minions.
-    bricks: u32 = 5,
+    bricks: u32 = 0,
 };
 
 var player: Player = .{};
@@ -102,7 +102,7 @@ export fn update() void {
                 w4.text(name, 80 - name.len * 4, nameY + 10);
             }
             if (game.time > 7) {
-                const level = Level.loadFromText(allocator, @embedFile("../assets/level1.json")) catch |err| {
+                const level = Level.loadFromText(allocator, @embedFile("../assets/levels/level1.json")) catch |err| {
                     if (std.debug.runtime_safety) {
                         const name: [:0]const u8 = @errorName(err);
                         var buf: [1000]u8 = undefined;
@@ -172,13 +172,15 @@ export fn update() void {
                         w4.blit(&Resources.Tile1, dx, @as(i32, ty * 16), 16, 16, w4.BLIT_2BPP);
                     } else if (t == .Brick) {
                         w4.blit(&Resources.TileBrick, dx, @as(i32, ty * 16), 16, 16, w4.BLIT_2BPP);
+                    } else if (t == .DoorTop) {
+                        w4.blit(&Resources.DoorTop, dx, @as(i32, ty * 16), 16, 16, w4.BLIT_2BPP);
+                    }else if (t == .DoorBottom) {
+                        w4.blit(&Resources.DoorBottom, dx, @as(i32, ty * 16), 16, 16, w4.BLIT_2BPP);
                     }
                 }
             }
 
-
             w4.DRAW_COLORS.* = 2;
-            w4.text("Bricks:", 0, 0);
             var i: u32 = 0;
             w4.DRAW_COLORS.* = 0x4321;
             while (i < play.bricks) : (i += 1) {
