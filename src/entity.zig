@@ -52,6 +52,9 @@ pub fn Mixin(comptime T: type) type {
             }
             if (collidesH) self.vx = 0;
 
+            if (self.x < 0) self.x = 0;
+            if (self.y < 0) self.y = 0;
+
             return CollisionInfo { .collidesH = collidesH, .collidesV = collidesV };
         }
     };

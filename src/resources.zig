@@ -3,6 +3,7 @@ const bmp = @import("bmp.zig");
 
 // Items
 pub const Brick = makeImageArray(@embedFile("../assets/brick.bmp"));
+pub const StickyBall = makeImageArray(@embedFile("../assets/sticky-ball.bmp"));
 
 // Tiles
 pub const Tile1 = makeImageArray(@embedFile("../assets/tiles/sand.bmp"));

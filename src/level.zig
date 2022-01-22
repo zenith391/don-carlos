@@ -1,4 +1,5 @@
 const std = @import("std");
+const w4 = @import("wasm4.zig");
 const Allocator = std.mem.Allocator;
 
 pub const Tile = enum {
@@ -6,8 +7,11 @@ pub const Tile = enum {
     Tile,
     // minable tile
     Brick,
+    // special tiles
     DoorBottom,
     DoorTop,
+    // pickable items
+    StickyBall,
 
     pub fn isSolid(self: Tile) bool {
         return self == .Tile or self == .Brick;
@@ -18,10 +22,12 @@ pub const Level = struct {
     tiles: []Tile,
     width: usize,
     height: usize,
+    allocator: Allocator,
 
     // Zig (currently) can't parse JSON at comptime
     // TODO: convert the JSON to level data in a separate build step
     pub fn loadFromText(allocator: Allocator, json: []const u8) !Level {
+
         var parser = std.json.Parser.init(allocator, false);
         defer parser.deinit();
         var tree = try parser.parse(json);
@@ -32,9 +38,11 @@ pub const Level = struct {
         const height = @intCast(usize, root.get("height").?.Integer);
 
         const b64 = root.get("layers").?.Array.items[0].Object.get("data").?.String;
-        const decodedLen = std.base64.standard.Decoder.calcSizeForSlice(b64) catch unreachable;
+        const decodedLen = try std.base64.standard.Decoder.calcSizeForSlice(b64);
+
         const decoded = try allocator.alloc(u8, decodedLen);
-        std.base64.standard.Decoder.decode(decoded, b64) catch unreachable;
+        defer allocator.free(decoded);
+        try std.base64.standard.Decoder.decode(decoded, b64);
 
         const tiles = try allocator.alloc(Tile, width * height);
         var y: usize = 0;
@@ -46,11 +54,12 @@ pub const Level = struct {
                 tiles[pos] = @intToEnum(Tile, int);
             }
         }
- 
+
         return Level {
             .tiles = tiles,
             .width = width,
             .height = height,
+            .allocator = allocator,
         };
     }
 
@@ -61,5 +70,9 @@ pub const Level = struct {
 
     pub fn setTile(self: Level, x: usize, y: usize, t: Tile) void {
         self.tiles[y * self.width + x] = t;
+    }
+
+    pub fn deinit(self: Level) void {
+        self.allocator.free(self.tiles);
     }
 };

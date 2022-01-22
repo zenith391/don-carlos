@@ -3,6 +3,12 @@ const w4 = @import("wasm4.zig");
 const entity = @import("entity.zig");
 const Game = @import("main.zig").Game;
 const Resources = @import("resources.zig");
+const Level = @import("level.zig").Level;
+const MinionArray = @import("main.zig").MinionArray;
+
+pub const Item = enum {
+    StickyBall
+};
 
 pub const Player = struct {
     x: f32 = 0,
@@ -10,6 +16,7 @@ pub const Player = struct {
     vx: f32 = 0,
     vy: f32 = 0,
     direction: entity.Direction = .Right,
+    heldItem: ?Item = null,
 
     pub usingnamespace entity.Mixin(Player);
 
@@ -25,6 +32,26 @@ pub const Player = struct {
                 level.setTile(tx, ty, .Air);
                 state.bricks += 1;
             }
+        }
+
+        const tx = @floatToInt(usize, self.x / 16);
+        const ty = @floatToInt(usize, self.y / 16);
+        if (level.getTile(tx, ty) == .DoorBottom or level.getTile(tx, ty) == .DoorTop) {
+            level.deinit();
+            game.resetLevelAllocator();
+            const newLevel = Level.loadFromText(game.allocator, @embedFile("../assets/levels/level2.json")) catch unreachable;
+            game.state = .{ .Playing = .{
+                .minions = MinionArray.init(0) catch unreachable,
+                .level = newLevel
+            }};
+
+            self.* = .{};
+            return;
+        }
+
+        if (level.getTile(tx, ty) == .StickyBall) {
+            level.setTile(tx, ty, .Air);
+            self.heldItem = .StickyBall;
         }
 
         var speed: f32 = 0;

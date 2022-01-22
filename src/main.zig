@@ -18,12 +18,18 @@ pub const Minion = struct {
     pub usingnamespace @import("entity.zig").Mixin(Minion);
 };
 
-const MinionArray = std.BoundedArray(Minion, 32);
+pub const MinionArray = std.BoundedArray(Minion, 32);
 pub const Game = struct {
-    time: f32 = 0,
+    time: f32 = 8,
+    allocator: std.mem.Allocator,
     state: union(enum) {
         Intro: void,
         Playing: PlayingState
+    },
+
+    pub fn resetLevelAllocator(self: *Game) void {
+        _ = self;
+        fba.reset();
     }
 };
 
@@ -38,9 +44,16 @@ pub const PlayingState = struct {
 };
 
 var player: Player = .{};
-var game: Game = .{ .state = .{ .Intro = {} } };
+var game: Game = .{ .state = .{ .Intro = {} }, .allocator = allocator };
 
 var oldGamepadState: u8 = undefined;
+
+pub fn panic(msg: []const u8, trace: ?*std.builtin.StackTrace) noreturn {
+    _ = trace;
+    w4.trace(@ptrCast([*:0]const u8, msg.ptr));
+    @breakpoint();
+    unreachable;
+}
 
 fn easeOutBounce(x: f32) f32 {
     const n1 = 7.5625;
@@ -102,7 +115,7 @@ export fn update() void {
                 w4.text(name, 80 - name.len * 4, nameY + 10);
             }
             if (game.time > 7) {
-                const level = Level.loadFromText(allocator, @embedFile("../assets/levels/level1.json")) catch |err| {
+                const level = Level.loadFromText(allocator, @embedFile("../assets/levels/level2.json")) catch |err| {
                     if (std.debug.runtime_safety) {
                         const name: [:0]const u8 = @errorName(err);
                         var buf: [1000]u8 = undefined;
@@ -119,12 +132,13 @@ export fn update() void {
         },
         .Playing => {
             const play = &game.state.Playing;
-            const level = play.level;
 
             const gamepad = Gamepad { .state = w4.GAMEPAD1.* };
             const deltaGamepad = Gamepad { .state = gamepad.state ^ (oldGamepadState & gamepad.state) };
             oldGamepadState = gamepad.state;
             player.update(&game, gamepad, deltaGamepad);
+
+            const level = play.level;
 
             if (player.x - play.camX > 90)
                 play.camX = player.x - 90;
@@ -168,14 +182,16 @@ export fn update() void {
                 while (tx < level.width) : (tx += 1) {
                     const t = level.getTile(tx, ty);
                     const dx = @floatToInt(i32, @intToFloat(f32, tx * 16) - play.camX);
-                    if (t == .Tile) {
-                        w4.blit(&Resources.Tile1, dx, @as(i32, ty * 16), 16, 16, w4.BLIT_2BPP);
-                    } else if (t == .Brick) {
-                        w4.blit(&Resources.TileBrick, dx, @as(i32, ty * 16), 16, 16, w4.BLIT_2BPP);
-                    } else if (t == .DoorTop) {
-                        w4.blit(&Resources.DoorTop, dx, @as(i32, ty * 16), 16, 16, w4.BLIT_2BPP);
-                    }else if (t == .DoorBottom) {
-                        w4.blit(&Resources.DoorBottom, dx, @as(i32, ty * 16), 16, 16, w4.BLIT_2BPP);
+                    if (t != .Air) {
+                        const resource = switch (t) {
+                            .Air => unreachable,
+                            .Tile => &Resources.Tile1,
+                            .Brick => &Resources.TileBrick,
+                            .DoorTop => &Resources.DoorTop,
+                            .DoorBottom => &Resources.DoorBottom,
+                            .StickyBall => &Resources.StickyBall,
+                        };
+                        w4.blit(resource, dx, ty * 16, 16, 16, w4.BLIT_2BPP);
                     }
                 }
             }
@@ -188,11 +204,12 @@ export fn update() void {
                 const y = @intCast(i32, 1 + (i%2) * 3);
                 w4.blit(&Resources.Brick, x, y, 8, 2, w4.BLIT_2BPP);
             }
-            w4.DRAW_COLORS.* = 2;
 
-            //const minionsText = std.fmt.bufPrintZ(&buf, "{d}", .{ play.minions.len }) catch unreachable;
-            //w4.text("Minions:", 0, 8);
-            //w4.text(minionsText.ptr, 160 - @intCast(i32, minionsText.len) * 8, 8);
+            if (player.heldItem) |held| {
+                switch (held) {
+                    .StickyBall => w4.blit(&Resources.StickyBall, 140, 5, 16, 16, w4.BLIT_2BPP)
+                }
+            }
         }
     }
 }
