@@ -7,6 +7,7 @@ pub const StickyBall = makeImageArray(@embedFile("../assets/sticky-ball.bmp"));
 
 // Tiles
 pub const Tile1 = makeImageArray(@embedFile("../assets/tiles/sand.bmp"));
+pub const Sand2 = makeImageArray(@embedFile("../assets/tiles/sand2.bmp"));
 pub const TileBrick = makeImageArray(@embedFile("../assets/tiles/brick.bmp"));
 pub const DoorBottom = makeImageArray(@embedFile("../assets/tiles/door-bottom.bmp"));
 pub const DoorTop = makeImageArray(@embedFile("../assets/tiles/door-top.bmp"));

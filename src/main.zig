@@ -14,7 +14,7 @@ pub const Minion = struct {
     vx: f32 = 0,
     vy: f32 = 0,
     direction: Direction = .Right,
-    bricks: u32 = 0,
+    bricks: u32 = 5,
 
     pub usingnamespace @import("entity.zig").Mixin(Minion);
 };
@@ -240,6 +240,7 @@ export fn update() void {
                         const resource = switch (t) {
                             .Air => unreachable,
                             .Tile => &Resources.Tile1,
+                            .Sand2 => &Resources.Sand2,
                             .Brick => &Resources.TileBrick,
                             .DoorTop => &Resources.DoorTop,
                             .DoorBottom => &Resources.DoorBottom,

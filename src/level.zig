@@ -5,16 +5,14 @@ const Allocator = std.mem.Allocator;
 pub const Tile = enum {
     Air,
     Tile,
-    // minable tile
     Brick,
-    // special tiles
     DoorBottom,
     DoorTop,
-    // pickable items
     StickyBall,
+    Sand2,
 
     pub fn isSolid(self: Tile) bool {
-        return self == .Tile or self == .Brick;
+        return self == .Tile or self == .Brick or self == .Sand2;
     }
 };
 
