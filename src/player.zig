@@ -5,8 +5,9 @@ const Game = @import("main.zig").Game;
 const Resources = @import("resources.zig");
 const Level = @import("level.zig").Level;
 const MinionArray = @import("main.zig").MinionArray;
+const Minion = @import("main.zig").Minion;
 
-pub const Item = enum {
+pub const Item = enum(u8) {
     StickyBall
 };
 
@@ -25,8 +26,8 @@ pub const Player = struct {
         const level = state.level;
 
         if (deltaGamepad.isPressed(.Down)) {
-            const vx: f32 = if (self.direction == .Left) -16 else 20;
-            const tx = @floatToInt(usize, (self.x + vx) / 16);
+            const vx: f32 = if (self.direction == .Left) -16 else 16;
+            const tx = @floatToInt(usize, @round((self.x + vx) / 16));
             const ty = @floatToInt(usize, (self.y) / 16);
             if (level.getTile(tx, ty) == .Brick) {
                 level.setTile(tx, ty, .Air);
@@ -61,6 +62,29 @@ pub const Player = struct {
             speed = 2;
 
         const collidesV = self.applyGravity(level, speed).collidesV;
+
+        if (deltaGamepad.isPressed(.X) and collidesV) {
+            if (state.bricks >= 5) {
+                state.bricks -= 5;
+                state.minions.append(Minion {
+                    .x = self.x,
+                    .y = self.y
+                }) catch {};
+            }
+        }
+
+        if (self.heldItem) |held| {
+            switch (held) {
+                .StickyBall => {
+                    if (deltaGamepad.isPressed(.Y)) {
+                        if (level.getTile(tx, ty) == .Brick) {
+                            // TODO: set tile to bounce brick
+                            self.heldItem = null;
+                        }
+                    }
+                }
+            }
+        }
 
         if (collidesV and gamepad.isPressed(.Up))
             self.vy = -4;

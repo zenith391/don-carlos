@@ -13,6 +13,7 @@ pub fn Mixin(comptime T: type) type {
             const gravity = 0.2;
             const friction = 1.5;
             const bounciness = 0.25;
+            const noClip = false;
 
             self.vy += gravity;
             self.x += self.vx;
@@ -33,13 +34,13 @@ pub fn Mixin(comptime T: type) type {
             var collidesH = false;
             var collidesV = false;
             if (self.vy > 0) {
-                if (level.getTile(tx, ty+1).isSolid() or level.getTile(tx+1, ty+1).isSolid()) {
+                if (level.getTile(tx, ty+1).isSolid() or level.getTile(tx+1, ty+1).isSolid() and !noClip) {
                     collidesV = true;
                 }
             }
-            if (self.vx > 0 and level.getTile(tx+1, ty).isSolid()) {
+            if (self.vx > 0 and level.getTile(tx+1, ty).isSolid() and !noClip) {
                 collidesH = true;
-            } else if (self.vx < 0 and level.getTile(tx, ty).isSolid()) {
+            } else if (self.vx < 0 and level.getTile(tx, ty).isSolid() and !noClip) {
                 collidesH = true;
             }
 
@@ -55,7 +56,7 @@ pub fn Mixin(comptime T: type) type {
             if (self.x < 0) self.x = 0;
             if (self.y < 0) self.y = 0;
 
-            return CollisionInfo { .collidesH = collidesH, .collidesV = collidesV };
+            return CollisionInfo { .collidesH = collidesH, .collidesV = collidesV or noClip };
         }
     };
 }

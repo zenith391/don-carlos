@@ -2,6 +2,7 @@ const std = @import("std");
 const w4 = @import("wasm4.zig");
 const Gamepad = w4.Gamepad;
 
+const Item = @import("player.zig").Item;
 const Player = @import("player.zig").Player;
 const Level = @import("level.zig").Level;
 const Direction = @import("entity.zig").Direction;
@@ -13,7 +14,7 @@ pub const Minion = struct {
     vx: f32 = 0,
     vy: f32 = 0,
     direction: Direction = .Right,
-    bricks: u32 = 5,
+    bricks: u32 = 0,
 
     pub usingnamespace @import("entity.zig").Mixin(Minion);
 };
@@ -21,6 +22,8 @@ pub const Minion = struct {
 pub const MinionArray = std.BoundedArray(Minion, 32);
 pub const Game = struct {
     time: f32 = 8,
+    /// Frames since the start of the game
+    frames: u32 = 0,
     allocator: std.mem.Allocator,
     state: union(enum) {
         Intro: void,
@@ -30,6 +33,60 @@ pub const Game = struct {
     pub fn resetLevelAllocator(self: *Game) void {
         _ = self;
         fba.reset();
+    }
+
+    // As of now, there is a bug in WASM-4 that makes it so every game shares
+    // the same save data. As a weak mitigation for that, I use a magic number
+    // where if it doesn't correspond, the save data won't be loaded.
+    const MAGIC_SAVEKEY: u32 = 0xD011C357;
+
+    pub fn loadData(self: *Game) void {
+        const state = &self.state.Playing;
+
+        var buffer: [32]u8 = undefined;
+        if (w4.diskr(&buffer, buffer.len) != buffer.len) {
+            w4.trace("Could not load the game save.");
+            return;
+        }
+        var stream = std.io.fixedBufferStream(&buffer);
+        const reader = stream.reader();
+
+        // check the magic number before loading
+        if (reader.readIntNative(u32) catch unreachable == MAGIC_SAVEKEY) {
+            player.x = @bitCast(f32, reader.readIntNative(u32) catch unreachable);
+            player.y = @bitCast(f32, reader.readIntNative(u32) catch unreachable);
+            const heldItem = reader.readIntNative(u8) catch unreachable;
+            if (heldItem > 0) {
+                player.heldItem = @intToEnum(Item, heldItem - 1);
+            } else {
+                player.heldItem = null;
+            }
+            state.bricks = reader.readIntNative(u32) catch unreachable;
+        } else {
+            w4.trace("Invalid magic key");
+        }
+    }
+
+    pub fn saveData(self: Game) void {
+        const state = self.state.Playing;
+
+        var buffer: [32]u8 = undefined;
+        var stream = std.io.fixedBufferStream(&buffer);
+        const writer = stream.writer();
+
+        writer.writeIntNative(u32, MAGIC_SAVEKEY) catch unreachable;
+        writer.writeIntNative(u32, @bitCast(u32, player.x)) catch unreachable;
+        writer.writeIntNative(u32, @bitCast(u32, player.y)) catch unreachable;
+        if (player.heldItem) |held| {
+            writer.writeIntBig(u8, @enumToInt(held) + 1) catch unreachable;
+        } else {
+            writer.writeIntBig(u8, 0) catch unreachable;
+        }
+        writer.writeIntNative(u32, state.bricks) catch unreachable;
+
+        if (w4.diskw(&buffer, buffer.len) != buffer.len) {
+            w4.trace("Could not save the game.");
+        }
     }
 };
 
@@ -82,6 +139,8 @@ var gameError = false;
 var levelLoaded = false;
 export fn update() void {
     game.time += 1.0 / 60.0; // roughly
+    game.frames += 1;
+
     w4.PALETTE.* = .{
         0x7c3f58,
         0xeb6b6f,
@@ -128,6 +187,7 @@ export fn update() void {
                     .minions = MinionArray.init(0) catch unreachable,
                     .level = level
                 }};
+                game.loadData();
             }
         },
         .Playing => {
@@ -138,22 +198,16 @@ export fn update() void {
             oldGamepadState = gamepad.state;
             player.update(&game, gamepad, deltaGamepad);
 
+            if (game.frames % 120 == 0) { // save every ~2 seconds
+                game.saveData();
+            }
+
             const level = play.level;
 
             if (player.x - play.camX > 90)
                 play.camX = player.x - 90;
             if (play.camX > 0 and player.x - play.camX < 10)
                 play.camX = std.math.max(player.x - 10, 0);
-
-            if (deltaGamepad.isPressed(.X)) {
-                if (play.bricks >= 5) {
-                    play.bricks -= 5;
-                    play.minions.append(Minion {
-                        .x = player.x,
-                        .y = player.y
-                    }) catch {};
-                }
-            }
 
             w4.DRAW_COLORS.* = 4;
             w4.rect(0, 0, 160, 160);
