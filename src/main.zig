@@ -17,11 +17,22 @@ pub const Minion = struct {
     bricks: u32 = 5,
 
     pub usingnamespace @import("entity.zig").Mixin(Minion);
+
+    pub fn update(self: *Minion, g: *Game) void {
+        const level = g.state.Playing.level;
+        
+        const mtx = @floatToInt(usize, @round(self.x / 16));
+        const mty = @floatToInt(usize, @round(self.y / 16));
+        if (level.getTile(mtx, mty+1) == .BrickSticky) {
+            self.vy = -4;
+        }
+        _ = self.applyGravity(level, 1);
+    }
 };
 
 pub const MinionArray = std.BoundedArray(Minion, 32);
 pub const Game = struct {
-    time: f32 = 8,
+    time: f32 = 0,
     /// Frames since the start of the game
     frames: u32 = 0,
     allocator: std.mem.Allocator,
@@ -30,6 +41,7 @@ pub const Game = struct {
         Playing: PlayingState,
         Menu: MenuState,
     },
+    changedLevel: bool = false,
 
     pub fn resetLevelAllocator(self: *Game) void {
         _ = self;
@@ -93,16 +105,18 @@ pub const Game = struct {
     }
 
     pub fn loadLevel(self: *Game, id: usize) void {
-        // const content: []const u8 = switch (id) {
-        //     0 => @embedFile("../assets/levels/level1.json"),
-        //     1 => @embedFile("../assets/levels/level2.json"),
-        //     else => unreachable
-        // };
+        self.changedLevel = true;
+        if (id == 3) {
+            gameFinished = true;
+            return;
+        }
+
         self.resetLevelAllocator();
         var level: Level = undefined;
+        gameError = true;
 
         comptime var i: usize = 0;
-        inline while (i < 2) : (i += 1) {
+        inline while (i < 3) : (i += 1) {
             if (i == id) {
                 level = Level.loadLevelId(self.allocator, i) catch |err| {
                     if (std.debug.runtime_safety) {
@@ -113,6 +127,7 @@ pub const Game = struct {
                     gameError = true;
                     return;
                 };
+                gameError = false;
             }
         }
         self.state = .{ .Playing = .{
@@ -141,6 +156,7 @@ pub const MenuState = struct {
 var player: Player = .{};
 var game: Game = .{ .state = .{ .Intro = {} }, .allocator = allocator };
 var oldGamepadState: u8 = undefined;
+var gameFinished: bool = false;
 
 pub fn panic(msg: []const u8, trace: ?*std.builtin.StackTrace) noreturn {
     _ = trace;
@@ -188,6 +204,15 @@ export fn update() void {
     if (gameError) {
         w4.DRAW_COLORS.* = 2;
         w4.text("Game Error", 0, 0);
+        return;
+    }
+    if (gameFinished) {
+        w4.DRAW_COLORS.* = 2;
+        w4.text("You finished the", 0, 60);
+        w4.text("game as sadly I", 0, 70);
+        w4.text("couldn't add more", 0, 80);
+        w4.text(":'(", 0, 90);
+        return;
     }
 
     switch (game.state) {
@@ -253,6 +278,10 @@ export fn update() void {
             const deltaGamepad = Gamepad { .state = gamepad.state ^ (oldGamepadState & gamepad.state) };
             oldGamepadState = gamepad.state;
             player.update(&game, gamepad, deltaGamepad);
+            if (game.changedLevel) {
+                game.changedLevel = false;
+                return;
+            }
 
             if (game.frames % 120 == 0) { // save every ~2 seconds
                 game.saveData();
@@ -271,7 +300,7 @@ export fn update() void {
             player.render(game);
             w4.DRAW_COLORS.* = 0x4321;
             for (play.minions.slice()) |*minion| {
-                _ = minion.applyGravity(level, 1);
+                minion.update(&game);
                 if (minion.bricks > 0) {
                     const tx = @floatToInt(usize, minion.x / 16);
                     const ty = @floatToInt(usize, minion.y / 16);
@@ -303,6 +332,7 @@ export fn update() void {
                             .StickyBall => &Resources.StickyBall,
                             .Coin => &Resources.Coin,
                             .BrickSticky => &Resources.TileBrickSticky,
+                            .BrickStack => &Resources.BrickStack,
                         };
                         w4.blit(resource, dx, ty * 16, 16, 16, w4.BLIT_2BPP);
                     }

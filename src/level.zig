@@ -13,6 +13,7 @@ pub const Tile = enum(u4) {
     Coin,
     // sticky brick is actually a bouncing break so don't mind the name
     BrickSticky,
+    BrickStack,
 
     pub fn isSolid(self: Tile) bool {
         return self == .Tile or self == .Brick or self == .BrickSticky or
@@ -25,45 +26,6 @@ pub const Level = struct {
     width: usize,
     height: usize,
     allocator: Allocator,
-
-    // Zig (currently) can't parse JSON at comptime
-    // TODO: convert the JSON to level data in a separate build step
-    pub fn loadFromText(allocator: Allocator, json: []const u8) !Level {
-
-        var parser = std.json.Parser.init(allocator, false);
-        defer parser.deinit();
-        var tree = try parser.parse(json);
-        defer tree.deinit();
-        const root = tree.root.Object;
-
-        const width = @intCast(usize, root.get("width").?.Integer);
-        const height = @intCast(usize, root.get("height").?.Integer);
-
-        const b64 = root.get("layers").?.Array.items[0].Object.get("data").?.String;
-        const decodedLen = try std.base64.standard.Decoder.calcSizeForSlice(b64);
-
-        const decoded = try allocator.alloc(u8, decodedLen);
-        defer allocator.free(decoded);
-        try std.base64.standard.Decoder.decode(decoded, b64);
-
-        const tiles = try allocator.alloc(Tile, width * height);
-        var y: usize = 0;
-        while (y < height) : (y += 1) {
-            var x: usize = 0;
-            while (x < width) : (x += 1) {
-                const pos = y * width + x;
-                const int = std.mem.readIntSliceLittle(u32, decoded[pos*4..(pos+1)*4]) -| 1;
-                tiles[pos] = @intToEnum(Tile, int);
-            }
-        }
-
-        return Level {
-            .tiles = tiles,
-            .width = width,
-            .height = height,
-            .allocator = allocator,
-        };
-    }
 
     pub fn loadLevelId(allocator: Allocator, comptime id: usize) !Level {
         const levelsModule = @import("levels");

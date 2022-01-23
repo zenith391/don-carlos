@@ -13,6 +13,7 @@ pub const TileBrickSticky = makeImageArray(@embedFile("../assets/tiles/brick-sti
 pub const DoorBottom = makeImageArray(@embedFile("../assets/tiles/door-bottom.bmp"));
 pub const DoorTop = makeImageArray(@embedFile("../assets/tiles/door-top.bmp"));
 pub const Coin = makeImageArray(@embedFile("../assets/tiles/coin.bmp"));
+pub const BrickStack = makeImageArray(@embedFile("../assets/tiles/brick-stack.bmp"));
 
 // Entities
 pub const Minion = makeImageArray(@embedFile("../assets/minion.bmp"));
