@@ -2,7 +2,7 @@ const std = @import("std");
 const w4 = @import("wasm4.zig");
 const Allocator = std.mem.Allocator;
 
-pub const Tile = enum {
+pub const Tile = enum(u4) {
     Air,
     Tile,
     Brick,
@@ -55,6 +55,25 @@ pub const Level = struct {
                 const int = std.mem.readIntSliceLittle(u32, decoded[pos*4..(pos+1)*4]) -| 1;
                 tiles[pos] = @intToEnum(Tile, int);
             }
+        }
+
+        return Level {
+            .tiles = tiles,
+            .width = width,
+            .height = height,
+            .allocator = allocator,
+        };
+    }
+
+    pub fn loadLevelId(allocator: Allocator, comptime id: usize) !Level {
+        const levelsModule = @import("levels");
+        const data = comptime @field(levelsModule, std.fmt.comptimePrint("level_{d}_data", .{ id }));
+        const width = comptime @field(levelsModule, std.fmt.comptimePrint("level_{d}_width", .{ id }));
+        const height = comptime @field(levelsModule, std.fmt.comptimePrint("level_{d}_height", .{ id }));
+
+        const tiles = try allocator.alloc(Tile, data.len);
+        for (data) |tid, i| {
+            tiles[i] = @intToEnum(Tile, tid);
         }
 
         return Level {

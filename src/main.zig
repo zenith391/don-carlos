@@ -27,7 +27,8 @@ pub const Game = struct {
     allocator: std.mem.Allocator,
     state: union(enum) {
         Intro: void,
-        Playing: PlayingState
+        Playing: PlayingState,
+        Menu: MenuState,
     },
 
     pub fn resetLevelAllocator(self: *Game) void {
@@ -62,7 +63,7 @@ pub const Game = struct {
                 player.heldItem = null;
             }
             state.bricks = reader.readIntNative(u32) catch unreachable;
-            state.levelId = reader.readIntNative(u32) catch unreachable;
+            self.loadLevel(reader.readIntNative(u32) catch unreachable);
         } else {
             w4.trace("Invalid magic key");
         }
@@ -92,20 +93,28 @@ pub const Game = struct {
     }
 
     pub fn loadLevel(self: *Game, id: usize) void {
-        const content: []const u8 = switch (id) {
-            0 => @embedFile("../assets/levels/level1.json"),
-            1 => @embedFile("../assets/levels/level2.json"),
-            else => unreachable
-        };
-        const level = Level.loadFromText(allocator, content) catch |err| {
-            if (std.debug.runtime_safety) {
-                const name: [:0]const u8 = @errorName(err);
-                var buf: [1000]u8 = undefined;
-                w4.trace(std.fmt.bufPrintZ(&buf, "{s}", .{ name }) catch unreachable);
+        // const content: []const u8 = switch (id) {
+        //     0 => @embedFile("../assets/levels/level1.json"),
+        //     1 => @embedFile("../assets/levels/level2.json"),
+        //     else => unreachable
+        // };
+        self.resetLevelAllocator();
+        var level: Level = undefined;
+
+        comptime var i: usize = 0;
+        inline while (i < 2) : (i += 1) {
+            if (i == id) {
+                level = Level.loadLevelId(self.allocator, i) catch |err| {
+                    if (std.debug.runtime_safety) {
+                        const name: [:0]const u8 = @errorName(err);
+                        var buf: [1000]u8 = undefined;
+                        w4.trace(std.fmt.bufPrintZ(&buf, "{s}", .{ name }) catch unreachable);
+                    }
+                    gameError = true;
+                    return;
+                };
             }
-            gameError = true;
-            return;
-        };
+        }
         self.state = .{ .Playing = .{
             .minions = MinionArray.init(0) catch unreachable,
             .level = level,
@@ -125,9 +134,12 @@ pub const PlayingState = struct {
     levelId: u32,
 };
 
+pub const MenuState = struct {
+    selectedButton: u1 = 0,
+};
+
 var player: Player = .{};
 var game: Game = .{ .state = .{ .Intro = {} }, .allocator = allocator };
-
 var oldGamepadState: u8 = undefined;
 
 pub fn panic(msg: []const u8, trace: ?*std.builtin.StackTrace) noreturn {
@@ -199,8 +211,39 @@ export fn update() void {
                 w4.text(name, 80 - name.len * 4, nameY + 10);
             }
             if (game.time > 7) {
-                game.loadLevel(0);
-                //game.loadData();
+                game.state = .{ .Menu = .{} };
+            }
+        },
+        .Menu => {
+            const menu = &game.state.Menu;
+            const gamepad = Gamepad { .state = w4.GAMEPAD1.* };
+            const deltaGamepad = Gamepad { .state = gamepad.state ^ (oldGamepadState & gamepad.state) };
+            oldGamepadState = gamepad.state;
+
+            w4.DRAW_COLORS.* = 4;
+            w4.rect(0, 0, 160, 160);
+            w4.DRAW_COLORS.* = 2;
+            w4.text("Continue", 50, 70);
+            w4.text("New Game", 50, 80);
+            w4.text(">", 40, 70 + @as(i32, menu.selectedButton) * 10);
+
+            if (deltaGamepad.isPressed(.Up)) {
+                menu.selectedButton -|= 1;
+            }
+            if (deltaGamepad.isPressed(.Down)) {
+                menu.selectedButton +|= 1;
+            }
+
+            if (deltaGamepad.isPressed(.X) or deltaGamepad.isPressed(.Right)) {
+                switch (menu.selectedButton) {
+                    0 => { // continue
+                        game.loadLevel(0);
+                        game.loadData();
+                    },
+                    1 => { // new game
+                        game.loadLevel(0);
+                    }
+                }
             }
         },
         .Playing => {
