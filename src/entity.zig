@@ -12,7 +12,7 @@ pub fn Mixin(comptime T: type) type {
         pub fn applyGravity(self: *T, level: Level, speed: f32) CollisionInfo {
             const gravity = 0.2;
             const friction = 1.5;
-            const bounciness = 0.25;
+            var bounciness: f32 = 0.25;
             const noClip = false;
 
             self.vy += gravity;
@@ -42,6 +42,10 @@ pub fn Mixin(comptime T: type) type {
                 collidesH = true;
             } else if (self.vx < 0 and level.getTile(tx, ty).isSolid() and !noClip) {
                 collidesH = true;
+            }
+
+            if (level.getTile(tx, ty+1) == .BrickSticky) {
+                bounciness = 1.1;
             }
 
 

@@ -37,22 +37,24 @@ pub const Player = struct {
 
         const tx = @floatToInt(usize, self.x / 16);
         const ty = @floatToInt(usize, self.y / 16);
+        const mtx = @floatToInt(usize, @round(self.x / 16));
+        const mty = @floatToInt(usize, @round(self.y / 16));
+
         if (level.getTile(tx, ty) == .DoorBottom or level.getTile(tx, ty) == .DoorTop) {
             level.deinit();
             game.resetLevelAllocator();
-            const newLevel = Level.loadFromText(game.allocator, @embedFile("../assets/levels/level2.json")) catch unreachable;
-            game.state = .{ .Playing = .{
-                .minions = MinionArray.init(0) catch unreachable,
-                .level = newLevel
-            }};
-
+            game.loadLevel(state.levelId + 1);
             self.* = .{};
             return;
         }
 
-        if (level.getTile(tx, ty) == .StickyBall) {
-            level.setTile(tx, ty, .Air);
+        if (level.getTile(mtx, mty) == .StickyBall) {
+            level.setTile(mtx, mty, .Air);
             self.heldItem = .StickyBall;
+        }
+
+        if (level.getTile(mtx, mty) == .Coin) {
+            level.setTile(mtx, mty, .Air);
         }
 
         var speed: f32 = 0;
@@ -77,8 +79,8 @@ pub const Player = struct {
             switch (held) {
                 .StickyBall => {
                     if (deltaGamepad.isPressed(.Y)) {
-                        if (level.getTile(tx, ty) == .Brick) {
-                            // TODO: set tile to bounce brick
+                        if (level.getTile(mtx, mty+1) == .Brick) {
+                            level.setTile(mtx, mty+1, .BrickSticky);
                             self.heldItem = null;
                         }
                     }

@@ -62,6 +62,7 @@ pub const Game = struct {
                 player.heldItem = null;
             }
             state.bricks = reader.readIntNative(u32) catch unreachable;
+            state.levelId = reader.readIntNative(u32) catch unreachable;
         } else {
             w4.trace("Invalid magic key");
         }
@@ -83,10 +84,33 @@ pub const Game = struct {
             writer.writeIntBig(u8, 0) catch unreachable;
         }
         writer.writeIntNative(u32, state.bricks) catch unreachable;
+        writer.writeIntNative(u32, state.levelId) catch unreachable;
 
         if (w4.diskw(&buffer, buffer.len) != buffer.len) {
             w4.trace("Could not save the game.");
         }
+    }
+
+    pub fn loadLevel(self: *Game, id: usize) void {
+        const content: []const u8 = switch (id) {
+            0 => @embedFile("../assets/levels/level1.json"),
+            1 => @embedFile("../assets/levels/level2.json"),
+            else => unreachable
+        };
+        const level = Level.loadFromText(allocator, content) catch |err| {
+            if (std.debug.runtime_safety) {
+                const name: [:0]const u8 = @errorName(err);
+                var buf: [1000]u8 = undefined;
+                w4.trace(std.fmt.bufPrintZ(&buf, "{s}", .{ name }) catch unreachable);
+            }
+            gameError = true;
+            return;
+        };
+        self.state = .{ .Playing = .{
+            .minions = MinionArray.init(0) catch unreachable,
+            .level = level,
+            .levelId = id,
+        }};
     }
 };
 
@@ -98,6 +122,7 @@ pub const PlayingState = struct {
     /// You can either spend them in making new (expensive) tiles
     /// or by spawning minions.
     bricks: u32 = 0,
+    levelId: u32,
 };
 
 var player: Player = .{};
@@ -174,20 +199,8 @@ export fn update() void {
                 w4.text(name, 80 - name.len * 4, nameY + 10);
             }
             if (game.time > 7) {
-                const level = Level.loadFromText(allocator, @embedFile("../assets/levels/level2.json")) catch |err| {
-                    if (std.debug.runtime_safety) {
-                        const name: [:0]const u8 = @errorName(err);
-                        var buf: [1000]u8 = undefined;
-                        w4.trace(std.fmt.bufPrintZ(&buf, "{s}", .{ name }) catch unreachable);
-                    }
-                    gameError = true;
-                    return;
-                };
-                game.state = .{ .Playing = .{
-                    .minions = MinionArray.init(0) catch unreachable,
-                    .level = level
-                }};
-                game.loadData();
+                game.loadLevel(0);
+                //game.loadData();
             }
         },
         .Playing => {
@@ -245,6 +258,8 @@ export fn update() void {
                             .DoorTop => &Resources.DoorTop,
                             .DoorBottom => &Resources.DoorBottom,
                             .StickyBall => &Resources.StickyBall,
+                            .Coin => &Resources.Coin,
+                            .BrickSticky => &Resources.TileBrickSticky,
                         };
                         w4.blit(resource, dx, ty * 16, 16, 16, w4.BLIT_2BPP);
                     }

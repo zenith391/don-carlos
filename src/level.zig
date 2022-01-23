@@ -10,9 +10,13 @@ pub const Tile = enum {
     DoorTop,
     StickyBall,
     Sand2,
+    Coin,
+    // sticky brick is actually a bouncing break so don't mind the name
+    BrickSticky,
 
     pub fn isSolid(self: Tile) bool {
-        return self == .Tile or self == .Brick or self == .Sand2;
+        return self == .Tile or self == .Brick or self == .BrickSticky or
+            self == .Sand2;
     }
 };
 

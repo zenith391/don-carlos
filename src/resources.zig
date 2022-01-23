@@ -9,8 +9,10 @@ pub const StickyBall = makeImageArray(@embedFile("../assets/sticky-ball.bmp"));
 pub const Tile1 = makeImageArray(@embedFile("../assets/tiles/sand.bmp"));
 pub const Sand2 = makeImageArray(@embedFile("../assets/tiles/sand2.bmp"));
 pub const TileBrick = makeImageArray(@embedFile("../assets/tiles/brick.bmp"));
+pub const TileBrickSticky = makeImageArray(@embedFile("../assets/tiles/brick-sticky.bmp"));
 pub const DoorBottom = makeImageArray(@embedFile("../assets/tiles/door-bottom.bmp"));
 pub const DoorTop = makeImageArray(@embedFile("../assets/tiles/door-top.bmp"));
+pub const Coin = makeImageArray(@embedFile("../assets/tiles/coin.bmp"));
 
 // Entities
 pub const Minion = makeImageArray(@embedFile("../assets/minion.bmp"));

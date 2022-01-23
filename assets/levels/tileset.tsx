@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.5" tiledversion="1.7.2" name="Don Carlos Tilemap" tilewidth="16" tileheight="16" tilecount="6" columns="0">
+<tileset version="1.5" tiledversion="1.7.2" name="Don Carlos Tilemap" tilewidth="16" tileheight="16" tilecount="8" columns="0">
  <grid orientation="orthogonal" width="1" height="1"/>
  <tile id="1">
   <image width="16" height="16" source="../tiles/sand.bmp"/>
@@ -18,5 +18,11 @@
  </tile>
  <tile id="6">
   <image width="16" height="16" source="../tiles/sand2.bmp"/>
+ </tile>
+ <tile id="7">
+  <image width="16" height="16" source="../tiles/coin.bmp"/>
+ </tile>
+ <tile id="8">
+  <image width="16" height="16" source="../tiles/brick-sticky.bmp"/>
  </tile>
 </tileset>
