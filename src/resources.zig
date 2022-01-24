@@ -1,6 +1,9 @@
 const std = @import("std");
 const bmp = @import("bmp.zig");
 
+// Menu
+pub const Logo = makeImageArray(@embedFile("../assets/logo.bmp"));
+
 // Items
 pub const Brick = makeImageArray(@embedFile("../assets/brick.bmp"));
 pub const StickyBall = makeImageArray(@embedFile("../assets/sticky-ball.bmp"));
@@ -24,13 +27,13 @@ pub const Player = struct {
 };
 
 fn MakeImageArrayReturn(comptime bmpFile: []const u8) type {
-    @setEvalBranchQuota(10000);
+    @setEvalBranchQuota(100000);
     const image = bmp.comptimeRead(bmpFile) catch unreachable;
     return [(image.width * image.height) / 4]u8;
 }
 
 fn makeImageArray(comptime bmpFile: []const u8) MakeImageArrayReturn(bmpFile) {
-    @setEvalBranchQuota(10000);
+    @setEvalBranchQuota(100000);
     const image = bmp.comptimeRead(bmpFile) catch unreachable;
     var pixels: [image.width * image.height]u2 = undefined;
     var y: usize = 0;

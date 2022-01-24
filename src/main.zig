@@ -32,7 +32,7 @@ pub const Minion = struct {
 
 pub const MinionArray = std.BoundedArray(Minion, 32);
 pub const Game = struct {
-    time: f32 = 0,
+    time: f32 = 6,
     /// Frames since the start of the game
     frames: u32 = 0,
     allocator: std.mem.Allocator,
@@ -235,7 +235,7 @@ export fn update() void {
                 const nameY = @floatToInt(i32, lerp(-10, 160 / 2, std.math.min(easeOutBounce((game.time - 4) / 2), 1)));
                 w4.text(name, 80 - name.len * 4, nameY + 10);
             }
-            if (game.time > 7) {
+            if (game.time >= 7) {
                 game.state = .{ .Menu = .{} };
             }
         },
@@ -247,6 +247,23 @@ export fn update() void {
 
             w4.DRAW_COLORS.* = 4;
             w4.rect(0, 0, 160, 160);
+            w4.DRAW_COLORS.* = 0x4321;
+
+            const logoX = @floatToInt(i32, lerp(-100, 160 / 2 - 96 / 2, std.math.min(easeOutBounce((game.time - 7) / 2), 1)));
+            w4.blit(&Resources.Logo, logoX, 20, 96, 32, w4.BLIT_2BPP);
+
+            var playerSprite = &Resources.Player.Standing;
+            if (@mod(game.time, 0.5) >= 0 and @mod(game.time, 0.5) < (0.5 / 3.0)) {
+                playerSprite = &Resources.Player.Walking;
+            } else if (@mod(game.time, 0.5) < (0.5 / 3.0) * 2.0) {
+                playerSprite = &Resources.Player.Standing;
+            } else {
+                playerSprite = &Resources.Player.Walking2;
+            }
+
+            const playerX = @floatToInt(i32, lerp(-16, 160, std.math.max(0, @mod((game.time - 10), 2) / 2)));
+            w4.blit(playerSprite, playerX, 120, 16, 16, w4.BLIT_2BPP);
+
             w4.DRAW_COLORS.* = 2;
             w4.text("Continue", 50, 70);
             w4.text("New Game", 50, 80);
@@ -259,7 +276,7 @@ export fn update() void {
                 menu.selectedButton +|= 1;
             }
 
-            if (deltaGamepad.isPressed(.X) or deltaGamepad.isPressed(.Right)) {
+            if (deltaGamepad.isPressed(.X)) {
                 switch (menu.selectedButton) {
                     0 => { // continue
                         game.loadLevel(0);
