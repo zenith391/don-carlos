@@ -15,7 +15,7 @@ pub const Music = struct {
     };
 
     pub fn readMusicCommands(comptime aaf: []const u8) !Music {
-        @setEvalBranchQuota(10000);
+        @setEvalBranchQuota(100000);
 
         var fba = std.io.fixedBufferStream(aaf);
         const reader = fba.reader();
@@ -39,7 +39,7 @@ pub const Music = struct {
         }
 
         var channelData: [numChannels][]const Command = @as([1][]const Command, .{ &[0]Command {} }) ** numChannels;
-        var channelTimes = [3]f32 { 0, 0, 0 };
+        var channelTimes = [1]f32 { 0 } ** numChannels;
 
         mainLoop: while (true) {
             var channel = 0;
@@ -92,6 +92,7 @@ pub const Music = struct {
     pub fn play(self: *Music, time: f32) void {
         var channel: usize = 0;
         while (channel < 3) : (channel += 1) {
+            if (self.currentNotes[channel] >= self.data[channel].len) continue;
             const curNote = self.data[channel][self.currentNotes[channel]];
             const curNoteStart = self.currentNotesStart[channel];
             switch (curNote) {
@@ -104,13 +105,13 @@ pub const Music = struct {
                             2 => w4.TONE_TRIANGLE | w4.TONE_MODE1,
                             else => unreachable
                         };
-                        var frameDuration = @floatToInt(u32, note.duration * 1000 / 30);
+                        var frameDuration = @floatToInt(u32, note.duration / 1000 * 60);
                         if (frameDuration > 255) {
                             w4.trace("music: DURATION OVERFLOW");
                             frameDuration = 255;
                         }
                         if (note.frequency > 0) {
-                            w4.tone(note.frequency, frameDuration, 63, flags);
+                            w4.tone(note.frequency, (3 << 24) | (15 << 16) | (10 << 8) | frameDuration, 30, flags);
                         }
                         self.currentNotesStart[channel] = note.start;
                     } else if (time >= curNoteStart + note.duration) {

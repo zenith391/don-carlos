@@ -44,6 +44,7 @@ pub const Game = struct {
     },
     changedLevel: bool = false,
     music: Music = Music.readMusicCommands(@embedFile("../assets/music/menu.aaf")) catch unreachable,
+    musicStart: f32 = 0,
 
     pub fn resetLevelAllocator(self: *Game) void {
         _ = self;
@@ -108,6 +109,8 @@ pub const Game = struct {
 
     pub fn loadLevel(self: *Game, id: usize) void {
         self.changedLevel = true;
+        self.musicStart = self.time;
+        self.music = comptime Music.readMusicCommands(@embedFile("../assets/music/game.aaf")) catch unreachable;
         if (id == 3) {
             gameFinished = true;
             return;
@@ -293,6 +296,7 @@ export fn update() void {
         },
         .Playing => {
             const play = &game.state.Playing;
+            game.music.play(game.time - game.musicStart);
 
             const gamepad = Gamepad { .state = w4.GAMEPAD1.* };
             const deltaGamepad = Gamepad { .state = gamepad.state ^ (oldGamepadState & gamepad.state) };
