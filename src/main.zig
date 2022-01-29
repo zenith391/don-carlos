@@ -6,6 +6,7 @@ const Item = @import("player.zig").Item;
 const Player = @import("player.zig").Player;
 const Level = @import("level.zig").Level;
 const Direction = @import("entity.zig").Direction;
+const Music = @import("music.zig").Music;
 const Resources = @import("resources.zig");
 
 pub const Minion = struct {
@@ -42,6 +43,7 @@ pub const Game = struct {
         Menu: MenuState,
     },
     changedLevel: bool = false,
+    music: Music = Music.readMusicCommands(@embedFile("../assets/music/menu.aaf")) catch unreachable,
 
     pub fn resetLevelAllocator(self: *Game) void {
         _ = self;
@@ -244,6 +246,7 @@ export fn update() void {
             const gamepad = Gamepad { .state = w4.GAMEPAD1.* };
             const deltaGamepad = Gamepad { .state = gamepad.state ^ (oldGamepadState & gamepad.state) };
             oldGamepadState = gamepad.state;
+            game.music.play(game.time - 7);
 
             w4.DRAW_COLORS.* = 4;
             w4.rect(0, 0, 160, 160);

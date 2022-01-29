@@ -32,7 +32,7 @@ pub const Player = struct {
             if (level.getTile(tx, ty) == .Brick) {
                 level.setTile(tx, ty, .Air);
                 state.bricks += 1;
-                w4.tone(370, (14 << 8) | (40 << 8), 60, w4.TONE_NOISE);
+                w4.tone(370, (14 << 8) | (40 << 8), 30, w4.TONE_NOISE);
             }
         }
 
@@ -95,7 +95,7 @@ pub const Player = struct {
         }
 
         if (collidesV and gamepad.isPressed(.Up)) {
-            w4.tone(250 | (880 << 16), (10 << 8) | (18 << 16), 100, w4.TONE_TRIANGLE);
+            w4.tone(250 | (880 << 16), (10 << 8) | (18 << 16), 50, w4.TONE_TRIANGLE);
             self.vy = -4;
         }
     }
