@@ -44,7 +44,7 @@ pub const Player = struct {
         if (level.getTile(tx, ty) == .DoorBottom or level.getTile(tx, ty) == .DoorTop) {
             level.deinit();
             game.resetLevelAllocator();
-            game.loadLevel(state.levelId + 1);
+            game.endLevel();
             self.* = .{};
             return;
         }

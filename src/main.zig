@@ -41,10 +41,12 @@ pub const Game = struct {
         Intro: void,
         Playing: PlayingState,
         Menu: MenuState,
+        LevelEnd: LevelEndState,
     },
     changedLevel: bool = false,
     music: Music = Music.readMusicCommands(@embedFile("../assets/music/menu.aaf")) catch unreachable,
     musicStart: f32 = 0,
+    score: u32 = 0,
 
     pub fn resetLevelAllocator(self: *Game) void {
         _ = self;
@@ -79,6 +81,7 @@ pub const Game = struct {
             }
             state.bricks = reader.readIntNative(u32) catch unreachable;
             self.loadLevel(reader.readIntNative(u32) catch unreachable);
+            game.score = reader.readIntNative(u32) catch unreachable;
         } else {
             w4.trace("Invalid magic key");
         }
@@ -101,10 +104,21 @@ pub const Game = struct {
         }
         writer.writeIntNative(u32, state.bricks) catch unreachable;
         writer.writeIntNative(u32, state.levelId) catch unreachable;
+        writer.writeIntNative(u32, game.score) catch unreachable;
 
         if (w4.diskw(&buffer, buffer.len) != buffer.len) {
             w4.trace("Could not save the game.");
         }
+    }
+
+    pub fn endLevel(self: *Game) void {
+        const state = self.state.Playing;
+        self.changedLevel = true;
+        self.state = .{ .LevelEnd = .{
+            .bricks = state.bricks,
+            .nextLevelId = state.levelId + 1,
+            .timer = game.time + 2
+        }};
     }
 
     pub fn loadLevel(self: *Game, id: usize) void {
@@ -141,6 +155,12 @@ pub const Game = struct {
             .levelId = id,
         }};
     }
+};
+
+pub const LevelEndState = struct {
+    bricks: u32,
+    nextLevelId: u32,
+    timer: f32 = 0,
 };
 
 pub const PlayingState = struct {
@@ -291,6 +311,30 @@ export fn update() void {
                     1 => { // new game
                         game.loadLevel(0);
                     }
+                }
+            }
+        },
+        .LevelEnd => {
+            const trans = &game.state.LevelEnd;
+            var buf: [100]u8 = undefined;
+            w4.DRAW_COLORS.* = 4;
+            w4.rect(0, 0, 160, 160);
+            w4.DRAW_COLORS.* = 2;
+
+            const scoreText = std.fmt.bufPrintZ(&buf, "{d}", .{ game.score }) catch unreachable;
+            w4.text("Score", 160 / 2 - 5 * (8/2), 160 / 2 - 12);
+            w4.text(scoreText, 160 / 2 - @intCast(i32, scoreText.len) * (8/2), 160 / 2 - (8 / 2));
+
+            if (trans.bricks > 0) {
+                if (game.time >= trans.timer) {
+                    trans.bricks -= 1;
+                    game.score += 10;
+                    trans.timer = game.time + 0.1;
+                    if (trans.bricks == 0) trans.timer = game.time + 2;
+                }
+            } else {
+                if (game.time >= trans.timer) {
+                    game.loadLevel(trans.nextLevelId);
                 }
             }
         },
