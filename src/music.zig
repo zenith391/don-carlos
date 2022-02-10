@@ -30,7 +30,7 @@ pub const Music = struct {
 
         const flags = try reader.readByte();
         if (flags & ~@as(u8, 0b11) != 0) {
-            @compileError("AAf file uses unsupported flags");
+            @compileError("AAF file uses unsupported flags");
         }
 
         const numChannels = try reader.readByte();
@@ -91,7 +91,7 @@ pub const Music = struct {
 
     pub fn play(self: *Music, time: f32) void {
         var channel: usize = 0;
-        while (channel < 3) : (channel += 1) {
+        while (channel < 2) : (channel += 1) {
             if (self.currentNotes[channel] >= self.data[channel].len) continue;
             const curNote = self.data[channel][self.currentNotes[channel]];
             const curNoteStart = self.currentNotesStart[channel];
@@ -100,9 +100,9 @@ pub const Music = struct {
                     if (curNoteStart == -1) {
                         if (time < note.start) continue;
                         const flags = switch (channel) {
-                            0 => w4.TONE_TRIANGLE,
-                            1 => w4.TONE_TRIANGLE | w4.TONE_MODE1,
-                            2 => w4.TONE_TRIANGLE | w4.TONE_MODE1,
+                            2 => w4.TONE_TRIANGLE,
+                            0 => w4.TONE_PULSE1 | w4.TONE_MODE3,
+                            1 => w4.TONE_PULSE2 | w4.TONE_MODE3,
                             else => unreachable
                         };
                         var frameDuration = @floatToInt(u32, note.duration / 1000 * 60);
@@ -111,7 +111,7 @@ pub const Music = struct {
                             frameDuration = 255;
                         }
                         if (note.frequency > 0) {
-                            w4.tone(note.frequency, (3 << 24) | (15 << 16) | (10 << 8) | frameDuration, 30, flags);
+                            w4.tone(note.frequency, (0 << 24) | (15 << 16) | (10 << 8) | frameDuration, 10, flags);
                         }
                         self.currentNotesStart[channel] = note.start;
                     } else if (time >= curNoteStart + note.duration) {

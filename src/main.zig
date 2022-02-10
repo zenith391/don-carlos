@@ -117,7 +117,7 @@ pub const Game = struct {
         self.state = .{ .LevelEnd = .{
             .bricks = state.bricks,
             .nextLevelId = state.levelId + 1,
-            .timer = game.time + 2
+            .timer = game.time + 1
         }};
     }
 
