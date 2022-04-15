@@ -59,8 +59,6 @@ pub const Game = struct {
     const MAGIC_SAVEKEY: u32 = 0xD011C357;
 
     pub fn loadData(self: *Game) void {
-        const state = &self.state.Playing;
-
         var buffer: [32]u8 = undefined;
         if (w4.diskr(&buffer, buffer.len) != buffer.len) {
             w4.trace("Could not load the game save.");
@@ -71,20 +69,24 @@ pub const Game = struct {
 
         // check the magic number before loading
         if (reader.readIntNative(u32) catch unreachable == MAGIC_SAVEKEY) {
-            player.x = @bitCast(f32, reader.readIntNative(u32) catch unreachable);
-            player.y = @bitCast(f32, reader.readIntNative(u32) catch unreachable);
-            const heldItem = reader.readIntNative(u8) catch unreachable;
-            if (heldItem > 0) {
-                player.heldItem = @intToEnum(Item, heldItem - 1);
-            } else {
-                player.heldItem = null;
-            }
-            state.bricks = reader.readIntNative(u32) catch unreachable;
             self.loadLevel(reader.readIntNative(u32) catch unreachable);
             game.score = reader.readIntNative(u32) catch unreachable;
         } else {
             w4.trace("Invalid magic key");
         }
+    }
+
+    pub fn hasSaveData() bool {
+        var buffer: [32]u8 = undefined;
+        if (w4.diskr(&buffer, buffer.len) != buffer.len) {
+            w4.trace("Could not load the game save.");
+            return false;
+        }
+        var stream = std.io.fixedBufferStream(&buffer);
+        const reader = stream.reader();
+
+        // if the magic number is correct, there is save data
+        return reader.readIntNative(u32) catch unreachable == MAGIC_SAVEKEY;
     }
 
     pub fn saveData(self: Game) void {
@@ -95,14 +97,6 @@ pub const Game = struct {
         const writer = stream.writer();
 
         writer.writeIntNative(u32, MAGIC_SAVEKEY) catch unreachable;
-        writer.writeIntNative(u32, @bitCast(u32, player.x)) catch unreachable;
-        writer.writeIntNative(u32, @bitCast(u32, player.y)) catch unreachable;
-        if (player.heldItem) |held| {
-            writer.writeIntBig(u8, @enumToInt(held) + 1) catch unreachable;
-        } else {
-            writer.writeIntBig(u8, 0) catch unreachable;
-        }
-        writer.writeIntNative(u32, state.bricks) catch unreachable;
         writer.writeIntNative(u32, state.levelId) catch unreachable;
         writer.writeIntNative(u32, game.score) catch unreachable;
 
@@ -112,12 +106,20 @@ pub const Game = struct {
     }
 
     pub fn endLevel(self: *Game) void {
+        self.switchToLevel(self.state.Playing.levelId + 1, false);
+    }
+
+    pub fn reloadLevel(self: *Game) void {
+        self.switchToLevel(self.state.Playing.levelId, true);
+    }
+
+    fn switchToLevel(self: *Game, levelId: usize, seamless: bool) void {
         const state = self.state.Playing;
         self.changedLevel = true;
         self.state = .{ .LevelEnd = .{
-            .bricks = state.bricks,
-            .nextLevelId = state.levelId + 1,
-            .timer = game.time + 1
+            .bricks = if (seamless) 0 else state.bricks,
+            .nextLevelId = levelId,
+            .timer = if (seamless) game.time - 1 else game.time + 1
         }};
     }
 
@@ -149,6 +151,12 @@ pub const Game = struct {
                 gameError = false;
             }
         }
+        // no such level
+        if (gameError) {
+            var buf: [100]u8 = undefined;
+            w4.trace(std.fmt.bufPrintZ(&buf, "Invalid level ID: {d}", .{ id }) catch unreachable);
+        }
+
         self.state = .{ .Playing = .{
             .minions = MinionArray.init(0) catch unreachable,
             .level = level,
@@ -176,6 +184,7 @@ pub const PlayingState = struct {
 
 pub const MenuState = struct {
     selectedButton: u1 = 0,
+    saveSelectTime: ?f32 = null,
 };
 
 var player: Player = .{};
@@ -288,28 +297,48 @@ export fn update() void {
             }
 
             const playerX = @floatToInt(i32, lerp(-16, 160, std.math.max(0, @mod((game.time - 10), 2) / 2)));
-            w4.blit(playerSprite, playerX, 120, 16, 16, w4.BLIT_2BPP);
+            w4.blit(playerSprite, playerX, 90, 16, 16, w4.BLIT_2BPP);
 
             w4.DRAW_COLORS.* = 2;
-            w4.text("Continue", 50, 70);
-            w4.text("New Game", 50, 80);
-            w4.text(">", 40, 70 + @as(i32, menu.selectedButton) * 10);
+            w4.text("(c) 2022 Zen1th", 160/2 - 15*8/2, 160 - 16);
 
-            if (deltaGamepad.isPressed(.Up)) {
-                menu.selectedButton -|= 1;
-            }
-            if (deltaGamepad.isPressed(.Down)) {
-                menu.selectedButton +|= 1;
+            if (deltaGamepad.state != 0 and menu.saveSelectTime == null) {
+                menu.saveSelectTime = game.time;
             }
 
-            if (deltaGamepad.isPressed(.X)) {
-                switch (menu.selectedButton) {
-                    0 => { // continue
-                        game.loadLevel(0);
-                        game.loadData();
-                    },
-                    1 => { // new game
-                        game.loadLevel(0);
+            if (menu.saveSelectTime) |saveSelectTime| {
+                w4.DRAW_COLORS.* = 3;
+
+                const saveSelectX = @floatToInt(i32, lerp(260, 160 / 2 - 140 / 2, std.math.min(easeOutBounce((game.time - saveSelectTime) / 2), 1)));
+                w4.rect(saveSelectX, 160 - 52, 140, 48);
+
+                w4.DRAW_COLORS.* = 2;
+                if (Game.hasSaveData()) {
+                    w4.text("Continue", saveSelectX + 10, 160 - 48);
+                } else {
+                    menu.selectedButton = 1;
+                }
+                w4.text("New Game", saveSelectX + 10, 160 - 38);
+                w4.text(">", saveSelectX + 2, 160 - 48 + @as(i32, menu.selectedButton) * 10);
+
+                if (game.time >= saveSelectTime + 1) {
+                    if (deltaGamepad.isPressed(.Up)) {
+                        menu.selectedButton -|= 1;
+                    }
+                    if (deltaGamepad.isPressed(.Down)) {
+                        menu.selectedButton +|= 1;
+                    }
+
+                    if (deltaGamepad.isPressed(.X)) {
+                        switch (menu.selectedButton) {
+                            0 => { // continue
+                                game.loadLevel(0);
+                                game.loadData();
+                            },
+                            1 => { // new game
+                                game.loadLevel(0);
+                            }
+                        }
                     }
                 }
             }
@@ -392,8 +421,10 @@ export fn update() void {
                     if (t != .Air) {
                         const resource = switch (t) {
                             .Air => unreachable,
-                            .Tile => &Resources.Tile1,
-                            .Sand2 => &Resources.Sand2,
+                            .SandN => &Resources.SandN,
+                            .SandC => &Resources.SandC,
+                            .SandNWS => &Resources.SandNWS,
+                            .SandNES => &Resources.SandNES,
                             .Brick => &Resources.TileBrick,
                             .DoorTop => &Resources.DoorTop,
                             .DoorBottom => &Resources.DoorBottom,
@@ -411,16 +442,18 @@ export fn update() void {
             var i: u32 = 0;
             w4.DRAW_COLORS.* = 0x4321;
             while (i < play.bricks) : (i += 1) {
-                const x = @intCast(i32, 55 + (i/2) * 7);
-                const y = @intCast(i32, 1 + (i%2) * 3);
+                const x = @intCast(i32, 20 + (i/3) * 7);
+                const y = @intCast(i32, 1 + (i%3) * 3);
                 w4.blit(&Resources.Brick, x, y, 8, 2, w4.BLIT_2BPP);
             }
 
             if (player.heldItem) |held| {
                 switch (held) {
-                    .StickyBall => w4.blit(&Resources.StickyBall, 140, 5, 16, 16, w4.BLIT_2BPP)
+                    .StickyBall => w4.blit(&Resources.StickyBall, 100, 5, 16, 16, w4.BLIT_2BPP)
                 }
             }
+
+            w4.blit(&Resources.BuildMinion, 160 - 34, 2, 32, 32, w4.BLIT_2BPP);
         }
     }
 }

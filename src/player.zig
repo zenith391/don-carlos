@@ -36,31 +36,46 @@ pub const Player = struct {
             }
         }
 
-        const tx = @floatToInt(usize, self.x / 16);
-        const ty = @floatToInt(usize, self.y / 16);
-        const mtx = @floatToInt(usize, @round(self.x / 16));
-        const mty = @floatToInt(usize, @round(self.y / 16));
+        if (self.y > 0) {
+            const tx = @floatToInt(usize, self.x / 16);
+            const ty = @floatToInt(usize, self.y / 16);
+            const mtx = @floatToInt(usize, @round(self.x / 16));
+            const mty = @floatToInt(usize, @round(self.y / 16));
 
-        if (level.getTile(tx, ty) == .DoorBottom or level.getTile(tx, ty) == .DoorTop) {
-            level.deinit();
-            game.resetLevelAllocator();
-            game.endLevel();
-            self.* = .{};
-            return;
-        }
+            if (level.getTile(tx, ty) == .DoorBottom or level.getTile(tx, ty) == .DoorTop) {
+                level.deinit();
+                game.resetLevelAllocator();
+                game.endLevel();
+                self.* = .{};
+                return;
+            }
 
-        if (level.getTile(mtx, mty) == .StickyBall) {
-            level.setTile(mtx, mty, .Air);
-            self.heldItem = .StickyBall;
-        }
+            if (level.getTile(mtx, mty) == .StickyBall) {
+                level.setTile(mtx, mty, .Air);
+                self.heldItem = .StickyBall;
+            }
 
-        if (level.getTile(mtx, mty) == .Coin) {
-            level.setTile(mtx, mty, .Air);
-        }
+            if (level.getTile(mtx, mty) == .Coin) {
+                level.setTile(mtx, mty, .Air);
+            }
 
-        if (level.getTile(mtx, mty) == .BrickStack) {
-            level.setTile(mtx, mty, .Air);
-            state.bricks += 5;
+            if (level.getTile(mtx, mty) == .BrickStack) {
+                level.setTile(mtx, mty, .Air);
+                state.bricks += 5;
+            }
+
+            if (self.heldItem) |held| {
+                switch (held) {
+                    .StickyBall => {
+                        if (deltaGamepad.isPressed(.Y)) {
+                            if (level.getTile(mtx, mty+1) == .Brick) {
+                                level.setTile(mtx, mty+1, .BrickSticky);
+                                self.heldItem = null;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         var speed: f32 = 0;
@@ -69,9 +84,8 @@ pub const Player = struct {
         if (gamepad.isPressed(.Right))
             speed = 2;
 
-        const collidesV = self.applyGravity(level, speed).collidesV;
-
-        if (deltaGamepad.isPressed(.X) and collidesV) {
+        const collideInfo = self.applyGravity(level, speed);
+        if (deltaGamepad.isPressed(.X) and collideInfo.collidesDown) {
             if (state.bricks >= 5) {
                 state.bricks -= 5;
                 state.minions.append(Minion {
@@ -81,22 +95,18 @@ pub const Player = struct {
             }
         }
 
-        if (self.heldItem) |held| {
-            switch (held) {
-                .StickyBall => {
-                    if (deltaGamepad.isPressed(.Y)) {
-                        if (level.getTile(mtx, mty+1) == .Brick) {
-                            level.setTile(mtx, mty+1, .BrickSticky);
-                            self.heldItem = null;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (collidesV and gamepad.isPressed(.Up)) {
+        if (collideInfo.collidesDown and gamepad.isPressed(.Up)) {
             w4.tone(250 | (880 << 16), (10 << 8) | (18 << 16), 50, w4.TONE_TRIANGLE);
             self.vy = -4;
+        }
+
+        if (self.y > 300) {
+            // Respawn
+            level.deinit();
+            game.resetLevelAllocator();
+            game.reloadLevel();
+            self.* = .{};
+            return;
         }
     }
 

@@ -4,13 +4,19 @@ const bmp = @import("bmp.zig");
 // Menu
 pub const Logo = makeImageArray(@embedFile("../assets/logo.bmp"));
 
+// Modes
+pub const BuildMinion = makeImageArray(@embedFile("../assets/overlay/builder-minion.bmp"));
+
 // Items
 pub const Brick = makeImageArray(@embedFile("../assets/brick.bmp"));
 pub const StickyBall = makeImageArray(@embedFile("../assets/sticky-ball.bmp"));
 
 // Tiles
-pub const Tile1 = makeImageArray(@embedFile("../assets/tiles/sand.bmp"));
-pub const Sand2 = makeImageArray(@embedFile("../assets/tiles/sand2.bmp"));
+pub const SandN = makeImageArray(@embedFile("../assets/tiles/sand_n.bmp"));
+pub const SandC = makeImageArray(@embedFile("../assets/tiles/sand_c.bmp"));
+pub const SandNWS = makeImageArray(@embedFile("../assets/tiles/sand_nws.bmp"));
+pub const SandNES = makeImageArray(@embedFile("../assets/tiles/sand_nes.bmp"));
+
 pub const TileBrick = makeImageArray(@embedFile("../assets/tiles/brick.bmp"));
 pub const TileBrickSticky = makeImageArray(@embedFile("../assets/tiles/brick-sticky.bmp"));
 pub const DoorBottom = makeImageArray(@embedFile("../assets/tiles/door-bottom.bmp"));

@@ -91,7 +91,7 @@ pub const Music = struct {
 
     pub fn play(self: *Music, time: f32) void {
         var channel: usize = 0;
-        while (channel < 2) : (channel += 1) {
+        while (channel < self.channels) : (channel += 1) {
             if (self.currentNotes[channel] >= self.data[channel].len) continue;
             const curNote = self.data[channel][self.currentNotes[channel]];
             const curNoteStart = self.currentNotesStart[channel];

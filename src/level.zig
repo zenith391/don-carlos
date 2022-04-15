@@ -4,20 +4,21 @@ const Allocator = std.mem.Allocator;
 
 pub const Tile = enum(u4) {
     Air,
-    Tile,
+    SandN,
     Brick,
     DoorBottom,
     DoorTop,
     StickyBall,
-    Sand2,
+    SandC,
     Coin,
     // sticky brick is actually a bouncing break so don't mind the name
     BrickSticky,
     BrickStack,
+    SandNWS,
+    SandNES,
 
     pub fn isSolid(self: Tile) bool {
-        return self == .Tile or self == .Brick or self == .BrickSticky or
-            self == .Sand2;
+        return self == .SandN or self == .SandC or self == .SandNWS or self == .SandNES or self == .Brick or self == .BrickSticky;
     }
 };
 

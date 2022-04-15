@@ -41,6 +41,10 @@ fn convertLevel(step: *std.build.LibExeObjStep, in: []const u8, id: usize, optio
     options.addOption([]const u4, dataName, tiles);
     options.addOption(usize, widthName, width);
     options.addOption(usize, heightName, height);
+    // Account for OptionsStep doing weird things with non-u8 slices
+    const size = std.mem.replacementSize(u8, options.contents.items, "@\"[]const u4\"", "[]const u4");
+    _ = std.mem.replace(u8, options.contents.items, "@\"[]const u4\"", "[]const u4", options.contents.items);
+    options.contents.shrinkRetainingCapacity(size);
 }
 
 pub fn build(b: *std.build.Builder) !void {
@@ -55,8 +59,7 @@ pub fn build(b: *std.build.Builder) !void {
     lib.import_memory = true;
     lib.initial_memory = 65536;
     lib.max_memory = 65536;
-    lib.global_base = 6560;
-    lib.stack_size = 8192;
+    lib.stack_size = 14752;
 
     const builder = lib.builder;
     const options = builder.addOptions();
