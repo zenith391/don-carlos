@@ -5,7 +5,8 @@ const bmp = @import("bmp.zig");
 pub const Logo = makeImageArray(@embedFile("../assets/logo.bmp"));
 
 // Modes
-pub const BuildMinion = makeImageArray(@embedFile("../assets/overlay/builder-minion.bmp"));
+pub const MinionBuild = makeImageArray(@embedFile("../assets/overlay/builder-minion.bmp"));
+pub const MinionAttack = makeImageArray(@embedFile("../assets/overlay/attack-minion.bmp"));
 
 // Items
 pub const Brick = makeImageArray(@embedFile("../assets/brick.bmp"));

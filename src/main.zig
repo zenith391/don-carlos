@@ -8,28 +8,7 @@ const Level = @import("level.zig").Level;
 const Direction = @import("entity.zig").Direction;
 const Music = @import("music.zig").Music;
 const Resources = @import("resources.zig");
-
-pub const Minion = struct {
-    x: f32,
-    y: f32,
-    vx: f32 = 0,
-    vy: f32 = 0,
-    direction: Direction = .Right,
-    bricks: u32 = 5,
-
-    pub usingnamespace @import("entity.zig").Mixin(Minion);
-
-    pub fn update(self: *Minion, g: *Game) void {
-        const level = g.state.Playing.level;
-        
-        const mtx = @floatToInt(usize, @round(self.x / 16));
-        const mty = @floatToInt(usize, @round(self.y / 16));
-        if (level.getTile(mtx, mty+1) == .BrickSticky) {
-            self.vy = -4;
-        }
-        _ = self.applyGravity(level, 1);
-    }
-};
+const Minion = @import("minion.zig").Minion;
 
 pub const MinionArray = std.BoundedArray(Minion, 32);
 pub const Game = struct {
@@ -398,16 +377,6 @@ export fn update() void {
             w4.DRAW_COLORS.* = 0x4321;
             for (play.minions.slice()) |*minion| {
                 minion.update(&game);
-                if (minion.bricks > 0) {
-                    const tx = @floatToInt(usize, minion.x / 16);
-                    const ty = @floatToInt(usize, minion.y / 16);
-                    if (level.getTile(tx, ty+1) == .Air) {
-                        level.setTile(tx, ty+1, .Brick);
-                        minion.bricks -= 1;
-                    }
-                } else {
-                    // TODO: remove
-                }
                 w4.blit(&Resources.Minion, @floatToInt(i32, minion.x - play.camX), @floatToInt(i32, minion.y), 16, 16, w4.BLIT_2BPP);
             }
 
@@ -453,7 +422,10 @@ export fn update() void {
                 }
             }
 
-            w4.blit(&Resources.BuildMinion, 160 - 34, 2, 32, 32, w4.BLIT_2BPP);
+            w4.blit(switch (player.nextMinionMode) {
+                .Build => &Resources.MinionBuild,
+                .Attack => &Resources.MinionAttack,
+            }, 160 - 34, 2, 32, 32, w4.BLIT_2BPP);
         }
     }
 }

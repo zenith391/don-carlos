@@ -5,7 +5,7 @@ const Game = @import("main.zig").Game;
 const Resources = @import("resources.zig");
 const Level = @import("level.zig").Level;
 const MinionArray = @import("main.zig").MinionArray;
-const Minion = @import("main.zig").Minion;
+const Minion = @import("minion.zig").Minion;
 
 pub const Item = enum(u8) {
     StickyBall
@@ -18,6 +18,7 @@ pub const Player = struct {
     vy: f32 = 0,
     direction: entity.Direction = .Right,
     heldItem: ?Item = null,
+    nextMinionMode: Minion.Mode = .Build,
 
     pub usingnamespace entity.Mixin(Player);
 
@@ -34,6 +35,11 @@ pub const Player = struct {
                 state.bricks += 1;
                 w4.tone(370, (14 << 8) | (40 << 8), 30, w4.TONE_NOISE);
             }
+        }
+
+        if (deltaGamepad.isPressed(.Y) and self.heldItem == null) {
+            self.nextMinionMode = @intToEnum(Minion.Mode, 
+                (@enumToInt(self.nextMinionMode) + 1) % std.meta.fields(Minion.Mode).len);
         }
 
         if (self.y > 0) {
@@ -90,7 +96,8 @@ pub const Player = struct {
                 state.bricks -= 5;
                 state.minions.append(Minion {
                     .x = self.x,
-                    .y = self.y
+                    .y = self.y,
+                    .mode = self.nextMinionMode,
                 }) catch {};
             }
         }
