@@ -26,7 +26,7 @@ pub const Player = struct {
         const state = &game.state.Playing;
         const level = state.level;
 
-        if (deltaGamepad.isPressed(.Down)) {
+        if (deltaGamepad.isPressed(.Down) and self.y >= 0) {
             const vx: f32 = if (self.direction == .Left) -16 else 16;
             const tx = @floatToInt(usize, @round((self.x + vx) / 16));
             const ty = @floatToInt(usize, (self.y) / 16);

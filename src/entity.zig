@@ -20,7 +20,7 @@ pub fn Mixin(comptime T: type) type {
             var bounciness: f32 = 0.25;
             const noClip = false;
 
-            self.vy += gravity;
+            self.vy = std.math.clamp(self.vy + gravity, -7, 7);
             self.x += self.vx;
             if (self.x < 0) self.x = 0;
             self.vx /= friction;
