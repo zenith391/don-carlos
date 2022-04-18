@@ -16,6 +16,8 @@ pub const Tile = enum(u4) {
     BrickStack,
     SandNWS,
     SandNES,
+    // an enemy spawn point
+    //TalinSpawnPoint,
 
     pub fn isSolid(self: Tile) bool {
         return self == .SandN or self == .SandC or self == .SandNWS or self == .SandNES or self == .Brick or self == .BrickSticky;

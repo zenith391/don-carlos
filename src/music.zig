@@ -7,11 +7,19 @@ pub const Music = struct {
     data: []const []const Command,
     currentNotes: [3]usize = [_]usize { 0, 0, 0 },
     currentNotesStart: [3]f32 = [_]f32 { -1, -1, -1 },
+    currentChannelsVolume: [3]u8 = [_]u8 { 10, 10, 10 },
 
     const Command = union(enum) {
         Note: struct { frequency: u16, duration: f32, start: f32 },
         SetVolume: struct { volume: u8 },
         SetAdsr: struct { attack: u8, delay: u8, sustain: u8, release: u8 }
+    };
+
+    const WaveType = enum(u8) {
+        Square = 0,
+        Sine,
+        Triangle,
+        Sawtooth
     };
 
     pub fn readMusicCommands(comptime aaf: []const u8) !Music {
@@ -34,7 +42,7 @@ pub const Music = struct {
         }
 
         const numChannels = try reader.readByte();
-        if (numChannels > 3) {
+        if (numChannels > 3 and false) {
             @compileError("AAF file uses too much channels.");
         }
 
@@ -66,7 +74,11 @@ pub const Music = struct {
                             .{ .SetVolume = .{ .volume = w4Volume }}
                         });
                     },
-                    3 => @compileError("TODO: wave type body"),
+                    3 => {
+                        const waveType = try reader.readEnum(WaveType, .Big);
+                        _ = waveType;
+                        // TODO: wave type body
+                    },
                     else => {
                         const duration = try reader.readIntLittle(u16);
                         const adjustedDur = @intToFloat(f32, duration) / 1000.0;
@@ -84,7 +96,7 @@ pub const Music = struct {
         }
 
         return Music {
-            .channels = numChannels,
+            .channels = std.math.min(3, numChannels),
             .data = &channelData
         };
     }
@@ -100,9 +112,9 @@ pub const Music = struct {
                     if (curNoteStart == -1) {
                         if (time < note.start) continue;
                         const flags = switch (channel) {
-                            2 => w4.TONE_TRIANGLE,
-                            0 => w4.TONE_PULSE1 | w4.TONE_MODE3,
-                            1 => w4.TONE_PULSE2 | w4.TONE_MODE3,
+                            0 => w4.TONE_TRIANGLE,
+                            1 => w4.TONE_PULSE1 | w4.TONE_MODE3,
+                            2 => w4.TONE_PULSE2 | w4.TONE_MODE3,
                             else => unreachable
                         };
                         var frameDuration = @floatToInt(u32, note.duration / 1000 * 60);
@@ -111,7 +123,7 @@ pub const Music = struct {
                             frameDuration = 255;
                         }
                         if (note.frequency > 0) {
-                            w4.tone(note.frequency, (0 << 24) | (15 << 16) | (10 << 8) | frameDuration, 10, flags);
+                            w4.tone(note.frequency, (0 << 24) | (15 << 16) | (10 << 8) | frameDuration, self.currentChannelsVolume[channel], flags);
                         }
                         self.currentNotesStart[channel] = note.start;
                     } else if (time >= curNoteStart + note.duration) {
@@ -119,9 +131,8 @@ pub const Music = struct {
                         self.currentNotesStart[channel] = -1;
                     }
                 },
-                .SetVolume => |volume| {
-                    _ = volume;
-                    // TODO: set volume
+                .SetVolume => |set| {
+                    self.currentChannelsVolume[channel] = set.volume / 6;
                     self.currentNotes[channel] += 1;
                 },
                 .SetAdsr => |adsr| {
